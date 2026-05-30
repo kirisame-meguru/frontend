@@ -50,9 +50,14 @@ jobs:
           npm pack ./.backend-src/libs/contract --pack-destination ./vendor
           echo "Vendored:" && ls -l vendor/remnawave-backend-contract-*.tgz
 
-      # Not `npm ci`: the freshly packed tgz has a new integrity hash that won't match the committed
-      # package-lock.json, so install (which re-derives integrity) instead of a locked verify.
-      - run: npm install
+      # The freshly packed tgz has a new integrity hash; both `npm ci` AND `npm install` enforce the
+      # `integrity` pinned in package-lock.json for `file:` deps and hard-fail (EINTEGRITY). Drop the
+      # stale integrity for just @remnawave/backend-contract so npm recomputes it from the new tgz;
+      # every other dep stays locked.
+      - name: Install deps (re-derive contract integrity)
+        run: |
+          node -e "const f='package-lock.json',j=require('./'+f);for(const k of Object.keys(j.packages||{}))if(k.endsWith('@remnawave/backend-contract'))delete j.packages[k].integrity;require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          npm install
 
       - run: npm run start:build
 
