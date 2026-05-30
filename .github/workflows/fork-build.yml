@@ -1,6 +1,10 @@
 # [remnawave-fork] Build the per-user-per-inbound frontend and publish the zip the backend image consumes.
 # Produces remnawave-frontend.zip and (re)uploads it to a release tagged `perinbound`, which the
 # backend fork's Dockerfile FRONTEND_URL points at. Uses the built-in GITHUB_TOKEN.
+#
+# The @remnawave/backend-contract dependency is BUILT FROM SOURCE here (checked out from the backend
+# fork) instead of relying on a hand-packed vendor/*.tgz. A contract change on the backend fork's
+# feature branch therefore ships into the frontend automatically — no local `npm pack` step.
 name: fork-frontend
 
 on:
@@ -14,15 +18,47 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Branch carrying the feature on every fork; the backend contract source is taken from here.
+      FORK_BRANCH: per-user-per-inbound-traffic-stats
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+
+      # [remnawave-fork] Pull the backend fork only for libs/contract (the contract source of truth).
+      # Same owner + built-in GITHUB_TOKEN, so no extra secret is needed for a public fork.
+      - name: Checkout backend fork (contract source)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/backend
+          ref: ${{ env.FORK_BRANCH }}
+          path: .backend-src
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-      - run: npm ci
+
+      # [remnawave-fork] Build the contract and refresh vendor/*.tgz from it. The packed filename is
+      # remnawave-backend-contract-<version>.tgz and must match the "file:vendor/..." spec in
+      # package.json (currently 2.8.0); bump both together if the contract version changes.
+      - name: Build & vendor @remnawave/backend-contract
+        run: |
+          set -euo pipefail
+          ( cd .backend-src/libs/contract && npm install && npm run build )
+          rm -f vendor/remnawave-backend-contract-*.tgz
+          npm pack ./.backend-src/libs/contract --pack-destination ./vendor
+          echo "Vendored:" && ls -l vendor/remnawave-backend-contract-*.tgz
+
+      # Not `npm ci`: the freshly packed tgz has a new integrity hash that won't match the committed
+      # package-lock.json, so install (which re-derives integrity) instead of a locked verify.
+      - run: npm install
+
       - run: npm run start:build
+
       - name: Zip dist
         run: zip -r remnawave-frontend.zip ./dist
+
       - name: Publish to `perinbound` release
         uses: softprops/action-gh-release@v2
         with:
