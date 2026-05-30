@@ -3,10 +3,28 @@ import {
     CreateConfigProfileCommand,
     DeleteConfigProfileCommand,
     ReorderConfigProfileCommand,
+    SetInboundUsageTrackingCommand,
     UpdateConfigProfileCommand
 } from '@remnawave/backend-contract'
 
 import { createMutationHook } from '../../tsq-helpers'
+
+export const useSetInboundUsageTracking = createMutationHook({
+    endpoint: SetInboundUsageTrackingCommand.TSQ_url,
+    bodySchema: SetInboundUsageTrackingCommand.RequestSchema,
+    responseSchema: SetInboundUsageTrackingCommand.ResponseSchema,
+    requestMethod: SetInboundUsageTrackingCommand.endpointDetails.REQUEST_METHOD,
+    rMutationParams: {
+        onError: (error) => {
+            notifications.show({
+                title: `Set Inbound Usage Tracking`,
+                message:
+                    error instanceof Error ? error.message : `Request failed with unknown error.`,
+                color: 'red'
+            })
+        }
+    }
+})
 
 export const useUpdateConfigProfile = createMutationHook({
     endpoint: UpdateConfigProfileCommand.TSQ_url,

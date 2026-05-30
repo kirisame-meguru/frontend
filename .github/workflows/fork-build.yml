@@ -1,0 +1,31 @@
+# [remnawave-fork] Build the per-user-per-inbound frontend and publish the zip the backend image consumes.
+# Produces remnawave-frontend.zip and (re)uploads it to a release tagged `perinbound`, which the
+# backend fork's Dockerfile FRONTEND_URL points at. Uses the built-in GITHUB_TOKEN.
+name: fork-frontend
+
+on:
+  push:
+    branches: [per-user-per-inbound-traffic-stats]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: npm ci
+      - run: npm run start:build
+      - name: Zip dist
+        run: zip -r remnawave-frontend.zip ./dist
+      - name: Publish to `perinbound` release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: perinbound
+          prerelease: true
+          files: remnawave-frontend.zip

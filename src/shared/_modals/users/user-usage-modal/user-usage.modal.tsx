@@ -1,16 +1,16 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
-import { ActionIcon, Group, NativeSelect, SimpleGrid, Stack } from '@mantine/core'
+import { ActionIcon, Badge, Group, NativeSelect, SimpleGrid, Stack, Tabs } from '@mantine/core'
 import { DatePickerInput, DatesRangeValue } from '@mantine/dates'
 import { UserUsageBarchartWidget } from '@widgets/dashboard/users/user-usage-statistic/usage-barchart'
 import { UserUsageSparklineCardWidget } from '@widgets/dashboard/users/user-usage-statistic/usage-sparkline-card'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TbCalendar, TbChartArcs, TbRefresh, TbServer2 } from 'react-icons/tb'
+import { TbCalendar, TbChartArcs, TbRefresh, TbRouter, TbServer2 } from 'react-icons/tb'
 
 import { showModal } from '@shared/_modals/show-modal'
 import { useNiceMantineModal } from '@shared/_modals/use-nice-modal'
-import { useGetStatsUserUsage } from '@shared/api/hooks'
+import { useGetStatsUserPerInboundUsage, useGetStatsUserUsage } from '@shared/api/hooks'
 import { CompoundDrawerShared } from '@shared/ui/compound-drawer/compound-drawer.shared'
 import { CountryFlag } from '@shared/ui/get-country-flag'
 import { TopLeaderboardCardShared } from '@shared/ui/leaderboard-item-card'
@@ -55,6 +55,7 @@ export const UserUsageModal = NiceModal.create((props: IProps) => {
 
     const [queryRange, setQueryRange] = useState<{ end: string; start: string }>(defaultRange)
     const [topNodesLimit, setTopNodesLimit] = useState<string>(String(DEFAULT_TOP_NODES_LIMIT))
+    const [activeTab, setActiveTab] = useState<'inbounds' | 'nodes'>('nodes')
 
     const handleDateRangeChange = (value: DatesRangeValue<string>) => {
         if (value[0] === null && value[1] === null) {
@@ -92,9 +93,39 @@ export const UserUsageModal = NiceModal.create((props: IProps) => {
             topNodesLimit: Number(topNodesLimit)
         },
         rQueryParams: {
-            enabled: Boolean(queryRange.start && queryRange.end)
+            enabled: activeTab === 'nodes' && Boolean(queryRange.start && queryRange.end)
         }
     })
+
+    const {
+        data: userInboundUsageStats,
+        isLoading: isInboundLoading,
+        refetch: refetchInbound,
+        isRefetching: isInboundRefetching
+    } = useGetStatsUserPerInboundUsage({
+        route: {
+            userId: userId
+        },
+        query: {
+            start: queryRange.start,
+            end: queryRange.end,
+            topInboundsLimit: Number(topNodesLimit)
+        },
+        rQueryParams: {
+            enabled: activeTab === 'inbounds' && Boolean(queryRange.start && queryRange.end)
+        }
+    })
+
+    // Map the per-inbound series/leaderboard to the shape the shared node widgets
+    // expect (name <- tag), so the existing barchart/leaderboard are reused as-is.
+    const inboundSeries = userInboundUsageStats?.series.map((item) => ({
+        uuid: item.uuid,
+        name: item.tag,
+        color: item.color,
+        countryCode: 'XX',
+        total: item.total,
+        data: item.data
+    }))
 
     const handleNodeClick = (nodeUuid: string) => {
         showModal('nodes_editNodeModal', { nodeUuid })
@@ -109,10 +140,14 @@ export const UserUsageModal = NiceModal.create((props: IProps) => {
             }}
             buttons={
                 <ActionIcon
-                    onClick={() => refetch()}
+                    onClick={() => (activeTab === 'nodes' ? refetch() : refetchInbound())}
                     size="lg"
                     variant="soft"
-                    loading={isRefetching || isLoading}
+                    loading={
+                        activeTab === 'nodes'
+                            ? isRefetching || isLoading
+                            : isInboundRefetching || isInboundLoading
+                    }
                 >
                     <TbRefresh size="20px" />
                 </ActionIcon>
@@ -222,33 +257,88 @@ export const UserUsageModal = NiceModal.create((props: IProps) => {
                         valueFormat="DD MMM, YYYY"
                     />
                 </Group>
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                    <UserUsageSparklineCardWidget
-                        isLoading={isLoading}
-                        sparklineData={userUsageStats?.sparklineData}
-                    />
 
-                    <TopLeaderboardCardShared
-                        emptyText={t('user-usage-modal.widget.no-data-available')}
-                        isLoading={isLoading}
-                        onItemClick={(node) => handleNodeClick(node.uuid)}
-                        items={userUsageStats?.topNodes?.map((node) => ({
-                            color: node.color,
-                            countryCode: node.countryCode,
-                            name: node.name,
-                            total: node.total,
-                            uuid: node.uuid
-                        }))}
-                        maxHeight={230}
-                        renderCountryFlag={(item) => <CountryFlag countryCode={item.countryCode} />}
-                    />
-                </SimpleGrid>
+                <Tabs
+                    onChange={(value) => setActiveTab((value as 'inbounds' | 'nodes') ?? 'nodes')}
+                    value={activeTab}
+                >
+                    <Tabs.List mb="md">
+                        <Tabs.Tab leftSection={<TbServer2 size="16px" />} value="nodes">
+                            {t('user-usage-modal.widget.by-node')}
+                        </Tabs.Tab>
+                        <Tabs.Tab leftSection={<TbRouter size="16px" />} value="inbounds">
+                            {t('user-usage-modal.widget.by-inbound')}
+                        </Tabs.Tab>
+                    </Tabs.List>
 
-                <UserUsageBarchartWidget
-                    categories={userUsageStats?.categories}
-                    isLoading={isLoading}
-                    series={userUsageStats?.series}
-                />
+                    <Tabs.Panel value="nodes">
+                        <Stack gap="md">
+                            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                                <UserUsageSparklineCardWidget
+                                    isLoading={isLoading}
+                                    sparklineData={userUsageStats?.sparklineData}
+                                />
+
+                                <TopLeaderboardCardShared
+                                    emptyText={t('user-usage-modal.widget.no-data-available')}
+                                    isLoading={isLoading}
+                                    onItemClick={(node) => handleNodeClick(node.uuid)}
+                                    items={userUsageStats?.topNodes?.map((node) => ({
+                                        color: node.color,
+                                        countryCode: node.countryCode,
+                                        name: node.name,
+                                        total: node.total,
+                                        uuid: node.uuid
+                                    }))}
+                                    maxHeight={230}
+                                    renderCountryFlag={(item) => (
+                                        <CountryFlag countryCode={item.countryCode} />
+                                    )}
+                                />
+                            </SimpleGrid>
+
+                            <UserUsageBarchartWidget
+                                categories={userUsageStats?.categories}
+                                isLoading={isLoading}
+                                series={userUsageStats?.series}
+                            />
+                        </Stack>
+                    </Tabs.Panel>
+
+                    <Tabs.Panel value="inbounds">
+                        <Stack gap="md">
+                            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                                <UserUsageSparklineCardWidget
+                                    isLoading={isInboundLoading}
+                                    sparklineData={userInboundUsageStats?.sparklineData}
+                                />
+
+                                <TopLeaderboardCardShared
+                                    emptyText={t('user-usage-modal.widget.no-data-available')}
+                                    isLoading={isInboundLoading}
+                                    items={userInboundUsageStats?.topInbounds?.map((inbound) => ({
+                                        color: inbound.color,
+                                        name: inbound.tag,
+                                        total: inbound.total,
+                                        uuid: inbound.uuid
+                                    }))}
+                                    maxHeight={230}
+                                    renderCountryFlag={(item) => (
+                                        <Badge color={item.color} size="sm" variant="light">
+                                            {item.name.slice(0, 2).toUpperCase()}
+                                        </Badge>
+                                    )}
+                                />
+                            </SimpleGrid>
+
+                            <UserUsageBarchartWidget
+                                categories={userInboundUsageStats?.categories}
+                                isLoading={isInboundLoading}
+                                series={inboundSeries}
+                            />
+                        </Stack>
+                    </Tabs.Panel>
+                </Tabs>
             </Stack>
         </CompoundDrawerShared>
     )

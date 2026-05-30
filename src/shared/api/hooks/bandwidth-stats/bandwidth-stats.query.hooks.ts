@@ -3,6 +3,7 @@ import {
     GetStatsNodesUsageCommand,
     GetStatsNodesUsersUsageCommand,
     GetStatsNodeUsersUsageCommand,
+    GetStatsUserPerInboundUsageCommand,
     GetStatsUserUsageCommand,
     GetInternalSquadUsageCommand
 } from '@remnawave/backend-contract'
@@ -22,6 +23,12 @@ export const bandwidthStatsQueryKeys = createQueryKeys('bandwidthStats', {
     }),
     getStatsUserUsageCommand: (
         query: GetStatsUserUsageCommand.RequestParam & GetStatsUserUsageCommand.RequestQuery
+    ) => ({
+        queryKey: [query]
+    }),
+    getStatsUserPerInboundUsageCommand: (
+        query: GetStatsUserPerInboundUsageCommand.RequestParam &
+            GetStatsUserPerInboundUsageCommand.RequestQuery
     ) => ({
         queryKey: [query]
     }),
@@ -67,6 +74,20 @@ export const useGetStatsUserUsage = createGetQueryHook({
         staleTime: sToMs(30)
     },
     errorHandler: (error) => errorHandler(error, 'Get User Usage By Range')
+})
+
+export const useGetStatsUserPerInboundUsage = createGetQueryHook({
+    endpoint: GetStatsUserPerInboundUsageCommand.TSQ_url,
+    responseSchema: GetStatsUserPerInboundUsageCommand.ResponseSchema,
+    requestQuerySchema: GetStatsUserPerInboundUsageCommand.RequestQuerySchema,
+    routeParamsSchema: GetStatsUserPerInboundUsageCommand.RequestParamSchema,
+    getQueryKey: ({ route, query }) =>
+        bandwidthStatsQueryKeys.getStatsUserPerInboundUsageCommand({ ...route!, ...query! })
+            .queryKey,
+    rQueryParams: {
+        staleTime: sToMs(30)
+    },
+    errorHandler: (error) => errorHandler(error, 'Get User Usage By Inbound')
 })
 
 export const useGetStatsNodeUsersUsage = createGetQueryHook({

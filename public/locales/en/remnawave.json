@@ -458,6 +458,7 @@
     "address": "Address",
     "e-g-example-com": "e.g. example.com",
     "traffic-tracking": "Track traffic usage",
+    "per-inbound-user-usage": "Track per-user-per-inbound usage",
     "limit": "Limit",
     "reset-day": "Reset day",
     "e-g-1-31": "e.g. 1-31",
@@ -731,6 +732,8 @@
     "widget": {
       "no-data-available-for-the-selected-period": "No data available for the selected period",
       "no-data-available": "No data available",
+      "by-node": "By node",
+      "by-inbound": "By inbound",
       "click-to-show-all": "Click to show all",
       "click-to-highlight-only-this-node": "Click to highlight only this node",
       "usage-by-period": "Usage by period",
