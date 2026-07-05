@@ -9,7 +9,7 @@ name: fork-frontend
 
 on:
   push:
-    branches: [per-user-per-inbound-traffic-stats]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Branch carrying the feature on every fork; the backend contract source is taken from here.
-      FORK_BRANCH: per-user-per-inbound-traffic-stats
+      FORK_BRANCH: main
     steps:
       - name: Checkout frontend
         uses: actions/checkout@v4
