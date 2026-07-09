@@ -41,7 +41,7 @@ jobs:
 
       # [remnawave-fork] Build the contract and refresh vendor/*.tgz from it. The packed filename is
       # remnawave-backend-contract-<version>.tgz and must match the "file:vendor/..." spec in
-      # package.json (currently 2.8.35); bump both together if the contract version changes.
+      # package.json (currently 3.4.3); bump both together if the contract version changes.
       - name: Build & vendor @remnawave/backend-contract
         run: |
           set -euo pipefail

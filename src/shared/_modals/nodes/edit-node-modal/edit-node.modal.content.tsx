@@ -87,7 +87,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 address: fetchedNode.address,
                 port: fetchedNode.port ?? undefined,
                 isTrafficTrackingActive: fetchedNode.isTrafficTrackingActive ?? undefined,
-                trackInboundUserUsage: fetchedNode.trackInboundUserUsage ?? undefined,
                 trafficLimitBytes: fetchedNode.trafficLimitBytes ?? undefined,
                 trafficResetDay: fetchedNode.trafficResetDay ?? undefined,
                 notifyPercent: fetchedNode.notifyPercent ?? undefined,

@@ -7,29 +7,42 @@ on **`main`** (`main` is the feature branch). See `../FORK-RESILIENCE.md` for th
 
 | Namespace | Symbol | File | Fork value | Upstream-conventional (PR-time) |
 |-----------|--------|------|-----------|----------------------------------|
-| dependency spec (feature-required) | `@remnawave/backend-contract` | `package.json` | `file:vendor/remnawave-backend-contract-2.8.35.tgz` | keep; remap to upstream-published |
+| dependency spec (feature-required) | `@remnawave/backend-contract` | `package.json` | `file:vendor/remnawave-backend-contract-3.4.3.tgz` | keep; remap to upstream-published |
 
 The frontend allocates **no sequential identifiers** — no error codes, no proto fields, no migrations.
 Everything it adds is a descriptive unique name:
 
-- i18n keys: `base-node-form.per-inbound-user-usage` (anchored next to `traffic-tracking`),
-  `user-usage-modal.widget.by-node`, `user-usage-modal.widget.by-inbound` (anchored next to
-  `traffic-statistics`) in `public/locales/en/remnawave.json`
-- query/mutation hooks: `useGetStatsUserPerInboundUsage`, `useSetInboundUsageTracking`
+- i18n keys: `user-usage-modal.widget.by-node`, `user-usage-modal.widget.by-inbound` (in the
+  `user-usage-modal.widget` block) in `public/locales/en/remnawave.json` — the only locale file the
+  fork touches
+- query hook: `useGetStatsUserPerInboundUsage`
 
-## 2.8.0 sync notes
+## The panel does not switch tracking on
 
-Upstream 2.8.0 is a large UI jump (Mantine 8→9, react-table lib swap, `DEFAULT_DATE_RANGE` →
-`getDefaultDateRange()`), yet the feature's TSX (user-usage-modal tabs, node-edit `trackInboundUserUsage`
-toggle, config-profile-inbounds tracking switch) rebased and type-checks clean against it. The
-`edit-node` form now follows upstream's **raw-bytes** `trafficLimitBytes` (dropped the fork's
-`bytesToGbUtil` wrap). `backend-contract` (2.8.35) is vendored as a `file:` tarball; `fork-build.yml`
-rebuilds it from the backend fork's `libs/contract` on every CI run (committed tgz is a local-dev
-fallback).
+Per-user-per-inbound tracking is enabled inside the xray config itself
+(`$.inbounds[].trackTrafficPerUser`), edited through the config profile editor. The frontend only
+*displays* the collected usage (the per-inbound tab of the user-usage modal). The two switches that
+used to control it — node `trackInboundUserUsage` and config-profile-inbound `trackUserUsage`, the
+latter via `useSetInboundUsageTracking` — are gone, along with the
+`base-node-form.per-inbound-user-usage` locale key.
+
+## 3.3.2 sync notes
+
+Upstream 3.3.2 moved the user-usage modal to `src/shared/_modals/users/user-usage-modal/user-usage.modal.tsx`
+(was `src/widgets/dashboard/users/user-usage-modal/user-usage-modal.widget.tsx`) and rebuilt it around
+`NiceModal.create` + `CompoundDrawerShared`; the fork's by-node/by-inbound `Tabs` split was re-applied on
+top of that shape. The stats route param moved from `uuid: string` to `userId: number`, and the commands
+now export `RequestParamSchema`/`RequestParam` instead of `RequestSchema`/`Request` — the fork's
+`useGetStatsUserPerInboundUsage` follows, and the backend fork's `GetStatsUserPerInboundUsageCommand`
+(contract 3.4.3, route constant `GET_INBOUNDS_BY_ID`) mirrors it. Upstream also dropped the
+`user-usage-modal.widget.traffic-statistics` key and deleted
+`config-profile-inbounds.drawer.widget.tsx`. `backend-contract` (3.4.3) is referenced as a `file:`
+tarball that `fork-build.yml` rebuilds from the backend fork's `libs/contract` on every CI run — no tgz
+is committed anymore, so a local dev build must `npm pack` it first.
 
 A collision on any of these would be a **visible git textual conflict** (safe), so none needs a reserved
 band. The one release-coupled change is the `@remnawave/backend-contract` dependency bump, which the
-feature requires (it imports `GetStatsUserPerInboundUsageCommand` / `SetInboundUsageTrackingCommand`).
+feature requires (it imports `GetStatsUserPerInboundUsageCommand`).
 
 ## For PR / version handling
 

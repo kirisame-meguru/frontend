@@ -180,25 +180,6 @@ export const NodeTrackingAndBillingCard = <
                             </Collapse>
                         </Box>
 
-                        <Group gap="xs" justify="space-between">
-                            <Group gap="xs">
-                                <TbChartBar
-                                    size={18}
-                                    style={{ color: 'var(--mantine-color-indigo-6)' }}
-                                />
-                                <Text fw={500} size="sm">
-                                    {t('base-node-form.per-inbound-user-usage')}
-                                </Text>
-                            </Group>
-                            <Switch
-                                key={form.key('trackInboundUserUsage')}
-                                {...form.getInputProps('trackInboundUserUsage', {
-                                    type: 'checkbox'
-                                })}
-                                size="md"
-                            />
-                        </Group>
-
                         <TagsInput
                             clearable
                             data={nodesTags?.tags || []}
