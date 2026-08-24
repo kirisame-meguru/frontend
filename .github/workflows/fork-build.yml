@@ -46,6 +46,10 @@ jobs:
         run: |
           set -euo pipefail
           ( cd .backend-src/libs/contract && npm install && npm run build )
+          # vendor/*.tgz is gitignored (.gitignore `*.tgz`), so vendor/ usually does NOT exist in a
+          # fresh checkout — and `npm pack --pack-destination` does not create it, it ENOENTs on the
+          # target path. Create it explicitly.
+          mkdir -p vendor
           rm -f vendor/remnawave-backend-contract-*.tgz
           npm pack ./.backend-src/libs/contract --pack-destination ./vendor
           echo "Vendored:" && ls -l vendor/remnawave-backend-contract-*.tgz
